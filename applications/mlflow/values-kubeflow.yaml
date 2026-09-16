@@ -57,6 +57,7 @@ istio:
 
 networkPolicy:
   enabled: true
+  # Profile-specific ingress restrictions belong to overlays/kubeflow.
 
 metrics:
   enabled: false

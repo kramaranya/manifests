@@ -70,6 +70,7 @@ spec:
           port: 8333
         - protocol: TCP
           port: 8334
+
 ---
 # Source: mlflow/templates/serviceaccount.yaml
 apiVersion: v1
@@ -84,6 +85,7 @@ metadata:
     app.kubernetes.io/version: "3.13.0"
     app.kubernetes.io/managed-by: Helm
 automountServiceAccountToken: true
+
 ---
 # Source: mlflow/templates/pvc.yaml
 apiVersion: v1
@@ -103,6 +105,7 @@ spec:
   resources:
     requests:
       storage: 2Gi
+
 ---
 # Source: mlflow/templates/rbac.yaml
 apiVersion: rbac.authorization.k8s.io/v1
@@ -135,7 +138,6 @@ apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRoleBinding
 metadata:
   name: mlflow
-  namespace: kubeflow
   labels:
     helm.sh/chart: mlflow-0.1.0
     app.kubernetes.io/name: mlflow
@@ -150,6 +152,7 @@ subjects:
   - kind: ServiceAccount
     name: mlflow
     namespace: kubeflow
+
 ---
 # Source: mlflow/templates/service.yaml
 apiVersion: v1
@@ -174,6 +177,7 @@ spec:
       port: 5000
       targetPort: http
   type: ClusterIP
+
 ---
 # Source: mlflow/templates/deployment.yaml
 apiVersion: apps/v1
@@ -218,6 +222,8 @@ spec:
         - name: mlflow-storage
           persistentVolumeClaim:
             claimName: mlflow
+        
+      
 
       containers:
         - name: mlflow
@@ -236,7 +242,7 @@ spec:
             - --port=5000
             - --workers=1
             - --allowed-hosts
-            - "localhost,127.0.0.1,[::1],0.0.0.0,localhost:*,127.0.0.1:*,[[]::1]:*,0.0.0.0:*,192.168.*,10.*,172.16.*,172.17.*,172.18.*,172.19.*,172.20.*,172.21.*,172.22.*,172.23.*,172.24.*,172.25.*,172.26.*,172.27.*,172.28.*,172.29.*,172.30.*,172.31.*,fc00:*,fd00:*,kubeflow.example.com,*.kubeflow.example.com,mlflow,mlflow:*,mlflow.kubeflow,mlflow.kubeflow:*,mlflow.kubeflow.svc,mlflow.kubeflow.svc:*,mlflow.kubeflow.svc.cluster.local,mlflow.kubeflow.svc.cluster.local:*"
+            - "localhost,127.0.0.1,[::1],0.0.0.0,localhost:*,127.0.0.1:*,[[]::1]:*,0.0.0.0:*,192.168.*,10.*,172.16.*,172.17.*,172.18.*,172.19.*,172.20.*,172.21.*,172.22.*,172.23.*,172.24.*,172.25.*,172.26.*,172.27.*,172.28.*,172.29.*,172.30.*,172.31.*,fc00:*,fd00:*,mlflow,mlflow:*,mlflow.kubeflow,mlflow.kubeflow:*,mlflow.kubeflow.svc,mlflow.kubeflow.svc:*,mlflow.kubeflow.svc.cluster.local,mlflow.kubeflow.svc.cluster.local:*,kubeflow.example.com,*.kubeflow.example.com"
             - --static-prefix=/mlflow
           env:
             - name: MLFLOW_DISABLE_TELEMETRY
@@ -291,6 +297,7 @@ spec:
               drop:
               - ALL
             readOnlyRootFilesystem: true
+
 ---
 # Source: mlflow/templates/istio/authorizationpolicy.yaml
 apiVersion: security.istio.io/v1beta1
@@ -316,6 +323,7 @@ spec:
       - source:
           principals:
           - cluster.local/ns/istio-system/sa/istio-ingressgateway-service-account
+
 ---
 # Source: mlflow/templates/istio/destinationrule.yaml
 apiVersion: networking.istio.io/v1alpha3
@@ -334,6 +342,7 @@ spec:
   trafficPolicy:
     tls:
       mode: ISTIO_MUTUAL
+
 ---
 # Source: mlflow/templates/istio/virtualservice.yaml
 apiVersion: networking.istio.io/v1alpha3
@@ -351,7 +360,7 @@ spec:
   gateways:
     - kubeflow-gateway
   hosts:
-    - "*"
+    - '*'
   http:
     - match:
         - uri:

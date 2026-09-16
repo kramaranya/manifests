@@ -70,7 +70,11 @@ jobs:
       run: ./tests/kubeflow_profile_install.sh
 
     - name: Install MLflow
-      run: ./tests/mlflow_install.sh
+      run: |
+        pip3 install -q PyYAML
+        python3 tests/mlflow_manifests_test.py
+        python3 tests/mlflow_gateway_harness_test.py
+        ./tests/mlflow_install.sh
 
     - name: Install Notebooks v1
       run: ./tests/notebooks_install.sh

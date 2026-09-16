@@ -6,8 +6,8 @@ setup_error_handling
 
 COMPONENT_NAME="mlflow"
 REPOSITORY_NAME="kubeflow/mlflow-integration"
-REPOSITORY_URL="https://github.com/${REPOSITORY_NAME}.git"
-COMMIT="d276153b84844c076d92c74519a3c405936220de"
+REPOSITORY_URL="${REPOSITORY_URL:-https://github.com/${REPOSITORY_NAME}.git}"
+COMMIT="${COMMIT:-26ff6d79de24f1951a2081ffa6fc0b889a1f897e}"
 REPOSITORY_DIRECTORY="mlflow-integration"
 SOURCE_DIRECTORY=${SOURCE_DIRECTORY:=/tmp/kubeflow-${COMPONENT_NAME}}
 BRANCH_NAME=${BRANCH_NAME:=synchronize-kubeflow-${COMPONENT_NAME}-manifests-${COMMIT}}
@@ -15,6 +15,8 @@ MANIFESTS_DIRECTORY=$(dirname "$SCRIPT_DIRECTORY")
 CHART_DIRECTORY="${SOURCE_DIRECTORY}/${REPOSITORY_DIRECTORY}/charts/mlflow"
 VALUES_FILE="${MANIFESTS_DIRECTORY}/applications/mlflow/values-kubeflow.yaml"
 DESTINATION_DIRECTORY="${MANIFESTS_DIRECTORY}/applications/mlflow/upstream/base"
+
+require_helm_major_version 4
 
 create_branch "$BRANCH_NAME"
 clone_and_checkout "$SOURCE_DIRECTORY" "$REPOSITORY_URL" "$REPOSITORY_DIRECTORY" "$COMMIT"

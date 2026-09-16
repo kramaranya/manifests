@@ -2,6 +2,7 @@
 
 import subprocess
 import unittest
+import runpy
 
 from pathlib import Path
 
@@ -62,6 +63,13 @@ class MLflowManifestTest(unittest.TestCase):
         self.assertIn("--enable-workspaces", container["args"])
         self.assertIn("--workspace-store-uri=kubernetes://", container["args"])
         self.assertIn("--static-prefix=/mlflow", container["args"])
+        allowed_hosts = container["args"][
+            container["args"].index("--allowed-hosts") + 1
+        ].split(",")
+        self.assertNotIn("*", allowed_hosts)
+        self.assertIn("localhost:*", allowed_hosts)
+        self.assertIn("kubeflow.example.com", allowed_hosts)
+        self.assertIn("*.kubeflow.example.com", allowed_hosts)
 
         environment = {item["name"]: item["value"] for item in container["env"]}
         self.assertEqual(
@@ -138,6 +146,11 @@ class MLflowManifestTest(unittest.TestCase):
             },
             rules,
         )
+        secret_rules = [rule for rule in rules if "secrets" in rule["resources"]]
+        self.assertTrue(secret_rules)
+        for rule in secret_rules:
+            self.assertEqual(["mlflow-artifact-connection"], rule["resourceNames"])
+            self.assertEqual({"get", "list", "watch"}, set(rule["verbs"]))
 
         subject = self.resource("ClusterRoleBinding")["subjects"][0]
         self.assertEqual(
@@ -181,6 +194,42 @@ class MLflowManifestTest(unittest.TestCase):
         self.assertEqual("2Gi", claim["spec"]["resources"]["requests"]["storage"])
         self.assertEqual(
             ["Ingress", "Egress"], self.resource("NetworkPolicy")["spec"]["policyTypes"]
+        )
+        self.assertEqual("ClusterIP", self.resource("Service")["spec"]["type"])
+
+    def test_network_ingress_is_limited_to_profiles_and_istio(self):
+        ingress = self.resource("NetworkPolicy")["spec"]["ingress"]
+        self.assertEqual(1, len(ingress))
+        self.assertEqual(
+            [
+                {
+                    "namespaceSelector": {
+                        "matchLabels": {"app.kubernetes.io/part-of": "kubeflow-profile"}
+                    }
+                },
+                {
+                    "namespaceSelector": {
+                        "matchLabels": {"kubernetes.io/metadata.name": "istio-system"}
+                    }
+                },
+            ],
+            ingress[0]["from"],
+        )
+        self.assertEqual(
+            {5000, 15020, 15021, 15090}, {port["port"] for port in ingress[0]["ports"]}
+        )
+
+    def test_resource_measurements_include_mlflow(self):
+        measurement = runpy.run_path(
+            str(REPOSITORY_ROOT / "tests/metrics-server_resource_table.py")
+        )
+        self.assertIn("MLflow", measurement["COMPONENT_ORDER"])
+        usage = measurement["parse_kubectl_output"](
+            "NAMESPACE NAME CPU MEMORY\nkubeflow mlflow-server 25m 256Mi\n"
+        )
+        self.assertEqual({"cpu": 25, "memory": 256}, usage["MLflow"])
+        self.assertEqual(
+            "MLflow", measurement["categorize_resource"]("kubeflow", "mlflow")
         )
 
 

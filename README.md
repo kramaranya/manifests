@@ -68,7 +68,7 @@ This repository periodically synchronizes all official Kubeflow components from 
 | KServe | applications/kserve/kserve | [v0.20.0](https://github.com/kserve/kserve/tree/v0.20.0) | 600m | 1200Mi | 0GB |
 | Kubeflow Pipelines | applications/pipeline/upstream | [2.17.2](https://github.com/kubeflow/pipelines/tree/2.17.2/manifests/kustomize) | 970m | 3552Mi | 35GB |
 | Kubeflow Hub | applications/hub/upstream | [v0.3.16](https://github.com/kubeflow/hub/tree/v0.3.16/manifests/kustomize) | 510m | 2112Mi | 20GB |
-| MLflow | applications/mlflow/upstream | [d276153](https://github.com/kubeflow/mlflow-integration/tree/d276153b84844c076d92c74519a3c405936220de/charts/mlflow) | Not measured | Not measured | 2GB |
+| MLflow | applications/mlflow/upstream | [26ff6d7](https://github.com/kubeflow/mlflow-integration/tree/26ff6d79de24f1951a2081ffa6fc0b889a1f897e/charts/mlflow) | Not measured | Not measured | 2GB |
 | Spark Operator | applications/spark/spark-operator | [2.5.2](https://github.com/kubeflow/spark-operator/tree/v2.5.2) | 9m | 41Mi | 0GB |
 | Istio | common/istio | [1.31.0](https://github.com/istio/istio/releases/tag/1.31.0) | 750m | 2364Mi | 0GB |
 | Knative | common/knative/knative-serving <br /> common/knative/knative-eventing | [v1.23.0](https://github.com/knative/serving/releases/tag/knative-v1.23.0) <br /> [v1.23.0](https://github.com/knative/eventing/releases/tag/knative-v1.23.0) | 1450m | 1038Mi | 0GB |

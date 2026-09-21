@@ -36,6 +36,13 @@ gateway-only `subject_access_review` deployment.
 
 ## Installation
 
+**Release blocker:** the currently published `v1.6.0` image fails during
+authorization endpoint compilation and does not become ready. The source-image
+validation below is a preview, not a repair of that published image. Before
+merging this default integration, publish a corrected canonical image, update
+`values-kubeflow.yaml`, regenerate the base through the synchronization script,
+and validate that published image without the CI source-image override.
+
 Install the Kubeflow namespace, Profile controller, Istio, and OAuth2-Proxy
 before MLflow. Then run:
 
@@ -59,8 +66,18 @@ With the platform installed and the gateway forwarded to `localhost:8080`:
 ```bash
 python3 tests/mlflow_manifests_test.py
 python3 tests/mlflow_gateway_harness_test.py
+python3 tests/mlflow_install_test.py
 ./tests/mlflow_test.sh kubeflow-user-example-com
 ```
+
+The full integration workflow currently builds the production Dockerfile from
+[`kubeflow/mlflow-integration` revision `d3e895d`](https://github.com/kubeflow/mlflow-integration/commit/d3e895dbc120e51f7696f44a4fa54cacbde8ff39),
+which installs the checked-out plugin and its declared MLflow dependency range.
+It loads that immutable-revision-tagged image into Kind and passes
+`MLFLOW_TEST_IMAGE` to `tests/mlflow_install.sh`. A temporary Kustomize overlay
+selects the preloaded image with `imagePullPolicy: Never`; generated manifests
+remain unchanged. Without that variable, the installer uses the declared release
+image. Failed rollouts report Pod details and current and previous container logs.
 
 The live test creates a temporary second Profile through the Profile controller,
 uses real ServiceAccount tokens, and checks gateway access, filtered discovery,

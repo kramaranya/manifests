@@ -11,6 +11,7 @@ set -euo pipefail
 PROFILE="${1:-kubeflow-user-example-com}"
 WORKSPACE="${2:-$PROFILE}"
 BASE_URL="http://localhost:8080/mlflow"
+SEARCH_REQUEST_BODY='{"max_results": 100}'
 RESPONSE_FILE="$(mktemp)"
 SECOND_PROFILE=""
 EXPERIMENT_ID=""
@@ -86,9 +87,24 @@ kubectl wait --for=create "namespace/${SECOND_PROFILE}" --timeout=120s
 kubectl wait --for=create serviceaccount/default-editor -n "$SECOND_PROFILE" --timeout=120s
 kubectl wait --for=jsonpath='{.metadata.labels.app\.kubernetes\.io/part-of}'=kubeflow-profile \
   "namespace/${SECOND_PROFILE}" --timeout=120s
+# These are virtual authorization resources, not CRDs. Resource discovery in
+# kubectl auth can-i can discard the API group and incorrectly report denial.
 for attempt in {1..60}; do
-  if kubectl auth can-i create experiments.mlflow.kubeflow.org -n "$SECOND_PROFILE" \
-    --as="system:serviceaccount:${SECOND_PROFILE}:default-editor" --quiet; then
+  if kubectl create --raw /apis/authorization.k8s.io/v1/subjectaccessreviews -f - <<EOF | python3 -c 'import json,sys; sys.exit(not json.load(sys.stdin)["status"]["allowed"])'; then
+{
+  "apiVersion": "authorization.k8s.io/v1",
+  "kind": "SubjectAccessReview",
+  "spec": {
+    "user": "system:serviceaccount:${SECOND_PROFILE}:default-editor",
+    "resourceAttributes": {
+      "group": "mlflow.kubeflow.org",
+      "resource": "experiments",
+      "verb": "create",
+      "namespace": "${SECOND_PROFILE}"
+    }
+  }
+}
+EOF
     break
   fi
   if [[ "$attempt" == 60 ]]; then
@@ -131,7 +147,7 @@ echo "Test 4: request without a token is denied..."
 STATUS_CODE="$(curl --connect-timeout 10 --max-time 30 -sS -o "$RESPONSE_FILE" -w '%{http_code}' \
   -X POST "$BASE_URL/api/2.0/mlflow/experiments/search" \
   -H 'Content-Type: application/json' \
-  -d '{}')"
+  -d "$SEARCH_REQUEST_BODY")"
 assert_status "$STATUS_CODE" 302 401 403
 echo "PASS: unauthenticated request received HTTP ${STATUS_CODE}"
 
@@ -141,7 +157,7 @@ echo "Test 5: non-Profile workspace is isolated..."
 STATUS_CODE="$(request "$EDITOR_TOKEN" default \
   -X POST "$BASE_URL/api/2.0/mlflow/experiments/search" \
   -H 'Content-Type: application/json' \
-  -d '{}')"
+  -d "$SEARCH_REQUEST_BODY")"
 assert_status "$STATUS_CODE" 403 404
 echo "PASS: non-Profile workspace was not accessible (HTTP ${STATUS_CODE})"
 
@@ -150,7 +166,7 @@ echo "Test 6: default-viewer can list experiments..."
 STATUS_CODE="$(request "$VIEWER_TOKEN" "$WORKSPACE" \
   -X POST "$BASE_URL/api/2.0/mlflow/experiments/search" \
   -H 'Content-Type: application/json' \
-  -d '{}')"
+  -d "$SEARCH_REQUEST_BODY")"
 assert_status "$STATUS_CODE" 200
 python3 - "$EXPERIMENT_ID" "$RESPONSE_FILE" <<'PY'
 import json
@@ -209,7 +225,7 @@ PY
   echo "Test 11: ${identity} Profile cannot read or write the other workspace..."
   STATUS_CODE="$(request "$TOKEN" "$OTHER_WORKSPACE" \
     -X POST "$BASE_URL/api/2.0/mlflow/experiments/search" \
-    -H 'Content-Type: application/json' -d '{}')"
+    -H 'Content-Type: application/json' -d "$SEARCH_REQUEST_BODY")"
   assert_status "$STATUS_CODE" 200 403 404
   if [[ "$STATUS_CODE" == 200 ]]; then
     python3 -c 'import json,sys; result=json.load(sys.stdin); assert not result.get("experiments"), "Cross-Profile data leak"; assert not result.get("next_page_token")' < "$RESPONSE_FILE"
